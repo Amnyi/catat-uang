@@ -1,5 +1,4 @@
 import sqlite3
-import csv
 import os
 from datetime import datetime, timedelta
 from kivy.app import App
@@ -152,7 +151,6 @@ class NavIconLainnya(Widget):
             Rectangle(pos=(cx - 1.75, cy - 1.5), size=(3.5, 3.5))
             Rectangle(pos=(cx + 5.5, cy - 1.5), size=(3.5, 3.5))
 
-# Ikon Vektor untuk Form Input (Pengganti Flaticon yang sering error)
 class IconKalender(Widget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -393,14 +391,14 @@ KV = '''
 <SpinnerOption>:
     background_normal: ''
     background_color: 0, 0, 0, 0
-    color: [1, 1, 1, 1]
-    font_size: "14sp"
+    color: [0.35, 0.12, 0.22, 1]
+    font_size: "13sp"
     bold: True
     height: "44dp"
     size_hint_y: None
     canvas.before:
         Color:
-            rgba: [0.96, 0.45, 0.62, 1] if self.state == 'normal' else [0.85, 0.35, 0.55, 1]
+            rgba: [0.98, 0.86, 0.90, 1] if self.state == 'normal' else [0.92, 0.75, 0.82, 1]
         RoundedRectangle:
             pos: self.x + 2, self.y + 2
             size: self.width - 4, self.height - 4
@@ -1556,7 +1554,7 @@ BoxLayout:
                                 width: "26dp"
                                 font_size: "16sp"
                             Label:
-                                text: "Laporan Bulanan"
+                                text: "Laporan Keuangan"
                                 color: [0.2, 0.2, 0.2, 1]
                                 font_size: "14sp"
                                 bold: True
@@ -1574,82 +1572,6 @@ BoxLayout:
                                 font_size: "12sp"
                                 bold: True
                                 on_release: app.buka_laporan_bulanan()
-
-                        BoxLayout:
-                            orientation: 'horizontal'
-                            size_hint_y: None
-                            height: "60dp"
-                            padding: [15, 10, 15, 10]
-                            spacing: "15dp"
-                            canvas.before:
-                                Color:
-                                    rgba: 1, 1, 1, 1
-                                RoundedRectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    radius: [14,]
-                            Label:
-                                text: "📁"
-                                size_hint_x: None
-                                width: "26dp"
-                                font_size: "16sp"
-                            Label:
-                                text: "Ekspor Data ke CSV"
-                                color: [0.2, 0.2, 0.2, 1]
-                                font_size: "14sp"
-                                bold: True
-                                halign: 'left'
-                                text_size: self.width, None
-                                pos_hint: {'center_y': 0.5}
-                            Button:
-                                text: "Ekspor"
-                                size_hint: None, None
-                                size: "80dp", "36dp"
-                                pos_hint: {'center_y': 0.5}
-                                background_normal: ''
-                                background_color: [0.96, 0.45, 0.62, 1]
-                                color: [1, 1, 1, 1]
-                                font_size: "12sp"
-                                bold: True
-                                on_release: app.ekspor_csv()
-
-                        BoxLayout:
-                            orientation: 'horizontal'
-                            size_hint_y: None
-                            height: "60dp"
-                            padding: [15, 10, 15, 10]
-                            spacing: "15dp"
-                            canvas.before:
-                                Color:
-                                    rgba: 1, 1, 1, 1
-                                RoundedRectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    radius: [14,]
-                            Label:
-                                text: "📄"
-                                size_hint_x: None
-                                width: "26dp"
-                                font_size: "16sp"
-                            Label:
-                                text: "Cetak Laporan (Text)"
-                                color: [0.2, 0.2, 0.2, 1]
-                                font_size: "14sp"
-                                bold: True
-                                halign: 'left'
-                                text_size: self.width, None
-                                pos_hint: {'center_y': 0.5}
-                            Button:
-                                text: "Cetak"
-                                size_hint: None, None
-                                size: "80dp", "36dp"
-                                pos_hint: {'center_y': 0.5}
-                                background_normal: ''
-                                background_color: [0.96, 0.45, 0.62, 1]
-                                color: [1, 1, 1, 1]
-                                font_size: "12sp"
-                                bold: True
-                                on_release: app.cetak_laporan_teks()
 
                         BoxLayout:
                             orientation: 'horizontal'
@@ -1719,7 +1641,7 @@ BoxLayout:
                                 on_release: app.reset_data()
 
         # ==========================================
-        # 8. HALAMAN LAPORAN BULANAN
+        # 8. HALAMAN LAPORAN (DENGAN PERIODE & PILIH TANGGAL HARIAN)
         # ==========================================
         Screen:
             name: 'laporan_bulanan'
@@ -1743,11 +1665,140 @@ BoxLayout:
                         background_color: 0,0,0,0
                         on_release: sm.current = 'lainnya'
                     Label:
-                        text: "Laporan Bulanan"
+                        text: "Laporan Keuangan"
                         color: [0.1, 0.1, 0.1, 1]
                         font_size: "18sp"
                         bold: True
                         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+                # Pilihan Periode Laporan
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: "42dp"
+                    padding: [4, 4, 4, 4]
+                    spacing: "5dp"
+                    canvas.before:
+                        Color:
+                            rgba: 0.93, 0.93, 0.93, 1
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [21,]
+                    Button:
+                        id: btn_lap_harian
+                        text: "Harian"
+                        background_normal: ''
+                        background_color: [0,0,0,0]
+                        color: [0.6, 0.6, 0.6, 1]
+                        bold: True
+                        font_size: "13sp"
+                        on_release: app.pilih_periode_laporan('harian')
+                        canvas.before:
+                            Color:
+                                rgba: [1, 1, 1, 1] if self.color[0] == 0.1 else [0,0,0,0]
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [18,]
+                    Button:
+                        id: btn_lap_bulanan
+                        text: "Bulanan"
+                        background_normal: ''
+                        background_color: [0,0,0,0]
+                        color: [0.1, 0.1, 0.1, 1]
+                        bold: True
+                        font_size: "13sp"
+                        on_release: app.pilih_periode_laporan('bulanan')
+                        canvas.before:
+                            Color:
+                                rgba: [1, 1, 1, 1] if self.color[0] == 0.1 else [0,0,0,0]
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [18,]
+                    Button:
+                        id: btn_lap_tahunan
+                        text: "Tahunan"
+                        background_normal: ''
+                        background_color: [0,0,0,0]
+                        color: [0.6, 0.6, 0.6, 1]
+                        bold: True
+                        font_size: "13sp"
+                        on_release: app.pilih_periode_laporan('tahunan')
+                        canvas.before:
+                            Color:
+                                rgba: [1, 1, 1, 1] if self.color[0] == 0.1 else [0,0,0,0]
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [18,]
+
+                # Panel Pilih Tanggal Harian (Pink Kalem / Agak Putih)
+                BoxLayout:
+                    id: layout_pilih_tanggal_harian
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: "0dp"
+                    opacity: 0
+                    spacing: "8dp"
+                    Spinner:
+                        id: spin_hari
+                        text: "01"
+                        values: tuple(str(i).zfill(2) for i in range(1, 32))
+                        background_normal: ''
+                        background_color: [0,0,0,0]
+                        color: [0.35, 0.12, 0.22, 1]
+                        font_size: "13sp"
+                        bold: True
+                        option_cls: 'SpinnerOption'
+                        option_height: "44dp"
+                        on_text: app.ubah_tanggal_harian(self.text, 'hari')
+                        canvas.before:
+                            Color:
+                                rgba: [0.98, 0.86, 0.90, 1]
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [10,]
+                    Spinner:
+                        id: spin_bulan_harian
+                        text: "Januari"
+                        values: ('Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember')
+                        background_normal: ''
+                        background_color: [0,0,0,0]
+                        color: [0.35, 0.12, 0.22, 1]
+                        font_size: "13sp"
+                        bold: True
+                        option_cls: 'SpinnerOption'
+                        option_height: "44dp"
+                        on_text: app.ubah_tanggal_harian(self.text, 'bulan')
+                        canvas.before:
+                            Color:
+                                rgba: [0.98, 0.86, 0.90, 1]
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [10,]
+                    Spinner:
+                        id: spin_tahun_harian
+                        text: "2026"
+                        values: tuple(str(y) for y in range(2024, 2051))
+                        background_normal: ''
+                        background_color: [0,0,0,0]
+                        color: [0.35, 0.12, 0.22, 1]
+                        font_size: "13sp"
+                        bold: True
+                        option_cls: 'SpinnerOption'
+                        option_height: "44dp"
+                        on_text: app.ubah_tanggal_harian(self.text, 'tahun')
+                        canvas.before:
+                            Color:
+                                rgba: [0.98, 0.86, 0.90, 1]
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [10,]
 
                 ScrollView:
                     BoxLayout:
@@ -1768,6 +1819,7 @@ BoxLayout:
                                     size: self.size
                                     radius: [18,]
                             Label:
+                                id: lbl_lap_judul_total
                                 text: "Total Pengeluaran Bulan Ini"
                                 color: 1, 1, 1, 0.9
                                 font_size: "12sp"
@@ -1775,7 +1827,7 @@ BoxLayout:
                                 size_hint: None, None
                                 size: self.texture_size
                             Label:
-                                id: lbl_lap_total_bulan
+                                id: lbl_lap_total_nominal
                                 text: "Rp 0"
                                 color: 1, 1, 1, 1
                                 font_size: "28sp"
@@ -1784,7 +1836,7 @@ BoxLayout:
                                 size_hint: None, None
                                 size: self.texture_size
                             Label:
-                                id: lbl_lap_rata_harian
+                                id: lbl_lap_info_tambahan
                                 text: "Rata-rata harian: Rp 0"
                                 color: 1, 1, 1, 0.8
                                 font_size: "12sp"
@@ -1793,6 +1845,7 @@ BoxLayout:
                                 size: self.texture_size
 
                         Label:
+                            id: lbl_lap_judul_rincian
                             text: "Rincian Kategori Bulan Ini"
                             color: [0.15, 0.15, 0.15, 1]
                             font_size: "15sp"
@@ -1864,11 +1917,27 @@ class CatatUangApp(App):
         init_db()
         self.kategori_filter_aktif = "Semua"
         self.tab_grafik_aktif = "kategori"
-        self.id_transaksi_sedang_diedit = None
+        self.periode_laporan_aktif = "bulanan"
+        
+        now = datetime.now()
+        self.pilih_hari = now.strftime("%d")
+        self.pilih_bulan_angka = now.strftime("%m")
+        self.pilih_tahun = now.strftime("%Y")
+        
         return Builder.load_string(KV)
 
     def on_start(self):
         self.muat_data()
+        if 'spin_hari' in self.root.ids:
+            self.root.ids.spin_hari.text = self.pilih_hari
+        nama_bln_indo_rev = {"01": "Januari", "02": "Februari", "03": "Maret", "04": "April", "05": "Mei", "06": "Juni", 
+                             "07": "Juli", "08": "Agustus", "09": "September", "10": "Oktober", "11": "November", "12": "Desember"}
+        if 'spin_bulan_harian' in self.root.ids:
+            self.root.ids.spin_bulan_harian.text = nama_bln_indo_rev.get(self.pilih_bulan_angka, "Januari")
+        if 'spin_tahun_harian' in self.root.ids:
+            # Memperbarui range tahun dari 2024 sampai 2050
+            self.root.ids.spin_tahun_harian.values = tuple(str(y) for y in range(2024, 2051))
+            self.root.ids.spin_tahun_harian.text = self.pilih_tahun
 
     def pilih_tab_grafik(self, tab):
         self.tab_grafik_aktif = tab
@@ -2105,40 +2174,115 @@ class CatatUangApp(App):
         conn.close()
 
     def buka_laporan_bulanan(self):
-        bulan_ini = datetime.now().strftime("%Y-%m")
+        self.pilih_periode_laporan("bulanan")
+        self.root.ids.sm.current = 'laporan_bulanan'
+
+    def ubah_tanggal_harian(self, val, jenis_ubah):
+        indo_to_angka = {"Januari": "01", "Februari": "02", "Maret": "03", "April": "04", "Mei": "05", "Juni": "06",
+                         "Juli": "07", "Agustus": "08", "September": "09", "Oktober": "10", "November": "11", "Desember": "12"}
+        if jenis_ubah == 'hari':
+            self.pilih_hari = val
+        elif jenis_ubah == 'bulan':
+            self.pilih_bulan_angka = indo_to_angka.get(val, "01")
+        elif jenis_ubah == 'tahun':
+            self.pilih_tahun = val
+        
+        if self.periode_laporan_aktif == 'harian':
+            self.pilih_periode_laporan('harian')
+
+    def pilih_periode_laporan(self, jenis):
+        self.periode_laporan_aktif = jenis
+        if 'btn_lap_harian' in self.root.ids and 'btn_lap_bulanan' in self.root.ids and 'btn_lap_tahunan' in self.root.ids:
+            self.root.ids.btn_lap_harian.color = [0.1, 0.1, 0.1, 1] if jenis == 'harian' else [0.6, 0.6, 0.6, 1]
+            self.root.ids.btn_lap_bulanan.color = [0.1, 0.1, 0.1, 1] if jenis == 'bulanan' else [0.6, 0.6, 0.6, 1]
+            self.root.ids.btn_lap_tahunan.color = [0.1, 0.1, 0.1, 1] if jenis == 'tahunan' else [0.6, 0.6, 0.6, 1]
+
+        if 'layout_pilih_tanggal_harian' in self.root.ids:
+            if jenis == 'harian':
+                self.root.ids.layout_pilih_tanggal_harian.height = "45dp"
+                self.root.ids.layout_pilih_tanggal_harian.opacity = 1
+            else:
+                self.root.ids.layout_pilih_tanggal_harian.height = "0dp"
+                self.root.ids.layout_pilih_tanggal_harian.opacity = 0
+
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        cursor.execute("SELECT SUM(nominal) FROM pengeluaran WHERE tanggal LIKE ?", (f"{bulan_ini}%",))
-        total_bulan = cursor.fetchone()[0] or 0
+        now = datetime.now()
+        nama_bulan_indo = {"01": "Januari", "02": "Februari", "03": "Maret", "04": "April", "05": "Mei", "06": "Juni", 
+                           "07": "Juli", "08": "Agustus", "09": "September", "10": "Oktober", "11": "November", "12": "Desember"}
 
-        hari_ini_tgl = datetime.now().day
-        rata_harian = int(total_bulan / hari_ini_tgl) if hari_ini_tgl > 0 else 0
+        if jenis == "harian":
+            target_date = f"{self.pilih_tahun}-{self.pilih_bulan_angka}-{self.pilih_hari}"
+            cursor.execute("SELECT SUM(nominal) FROM pengeluaran WHERE tanggal = ?", (target_date,))
+            total_val = cursor.fetchone()[0] or 0
+            
+            nama_bln_str = nama_bulan_indo.get(self.pilih_bulan_angka, "")
+            if 'lbl_lap_judul_total' in self.root.ids:
+                self.root.ids.lbl_lap_judul_total.text = f"Total Pengeluaran Tanggal {int(self.pilih_hari)} {nama_bln_str} {self.pilih_tahun}"
+            if 'lbl_lap_info_tambahan' in self.root.ids:
+                self.root.ids.lbl_lap_info_tambahan.text = f"Tanggal: {self.pilih_hari}-{self.pilih_bulan_angka}-{self.pilih_tahun}"
+            if 'lbl_lap_judul_rincian' in self.root.ids:
+                self.root.ids.lbl_lap_judul_rincian.text = "Rincian Kategori Tanggal Ini"
 
-        if 'lbl_lap_total_bulan' in self.root.ids:
-            self.root.ids.lbl_lap_total_bulan.text = f"Rp {total_bulan:,}".replace(",", ".")
-        if 'lbl_lap_rata_harian' in self.root.ids:
-            self.root.ids.lbl_lap_rata_harian.text = f"Rata-rata harian: Rp {rata_harian:,}".replace(",", ".")
+            cursor.execute("SELECT kategori, SUM(nominal) FROM pengeluaran WHERE tanggal = ? GROUP BY kategori", (target_date,))
+            kategori_data = cursor.fetchall()
 
-        cursor.execute("SELECT kategori, SUM(nominal) FROM pengeluaran WHERE tanggal LIKE ? GROUP BY kategori", (f"{bulan_ini}%",))
-        kategori_data = cursor.fetchall()
+        elif jenis == "bulanan":
+            target_month = now.strftime("%Y-%m")
+            m_str = now.strftime("%m")
+            y_str = now.strftime("%Y")
+            cursor.execute("SELECT SUM(nominal) FROM pengeluaran WHERE tanggal LIKE ?", (f"{target_month}%",))
+            total_val = cursor.fetchone()[0] or 0
+
+            hari_ini_tgl = now.day
+            rata_harian = int(total_val / hari_ini_tgl) if hari_ini_tgl > 0 else 0
+
+            if 'lbl_lap_judul_total' in self.root.ids:
+                self.root.ids.lbl_lap_judul_total.text = f"Total Pengeluaran Bulan {nama_bulan_indo.get(m_str, m_str)}"
+            if 'lbl_lap_info_tambahan' in self.root.ids:
+                self.root.ids.lbl_lap_info_tambahan.text = f"Rata-rata harian: Rp {rata_harian:,}".replace(",", ".")
+            if 'lbl_lap_judul_rincian' in self.root.ids:
+                self.root.ids.lbl_lap_judul_rincian.text = f"Rincian Kategori Bulan {nama_bulan_indo.get(m_str, m_str)}"
+
+            cursor.execute("SELECT kategori, SUM(nominal) FROM pengeluaran WHERE tanggal LIKE ? GROUP BY kategori", (f"{target_month}%",))
+            kategori_data = cursor.fetchall()
+
+        else:  # tahunan
+            target_year = now.strftime("%Y")
+            cursor.execute("SELECT SUM(nominal) FROM pengeluaran WHERE tanggal LIKE ?", (f"{target_year}%",))
+            total_val = cursor.fetchone()[0] or 0
+
+            bulan_berjalan = now.month
+            rata_bulanan = int(total_val / bulan_berjalan) if bulan_berjalan > 0 else 0
+
+            if 'lbl_lap_judul_total' in self.root.ids:
+                self.root.ids.lbl_lap_judul_total.text = f"Total Pengeluaran Tahun {target_year}"
+            if 'lbl_lap_info_tambahan' in self.root.ids:
+                self.root.ids.lbl_lap_info_tambahan.text = f"Rata-rata bulanan: Rp {rata_bulanan:,}".replace(",", ".")
+            if 'lbl_lap_judul_rincian' in self.root.ids:
+                self.root.ids.lbl_lap_judul_rincian.text = f"Rincian Kategori Tahun {target_year}"
+
+            cursor.execute("SELECT kategori, SUM(nominal) FROM pengeluaran WHERE tanggal LIKE ? GROUP BY kategori", (f"{target_year}%",))
+            kategori_data = cursor.fetchall()
+
+        if 'lbl_lap_total_nominal' in self.root.ids:
+            self.root.ids.lbl_lap_total_nominal.text = f"Rp {total_val:,}".replace(",", ".")
 
         if 'layout_lap_rincian_kategori' in self.root.ids:
             lap_layout = self.root.ids.layout_lap_rincian_kategori
             lap_layout.clear_widgets()
 
-            if total_bulan > 0:
+            if total_val > 0:
                 for kat, total_kat in kategori_data:
-                    pct = int((total_kat / total_bulan) * 100)
+                    pct = int((total_kat / total_val) * 100)
                     nom_str = f"Rp {total_kat:,}".replace(",", ".")
                     max_str = f"{pct}% dari total"
                     row = AnggaranCategoryRow(kategori=kat, nominal_str=nom_str, max_nominal_str=max_str)
                     lap_layout.add_widget(row)
             else:
-                lap_layout.add_widget(Label(text="Belum ada transaksi bulan ini.", color=[0.5, 0.5, 0.5, 1], font_size="13sp", size_hint_y=None, height="40dp"))
+                lap_layout.add_widget(Label(text="Belum ada transaksi pada periode ini.", color=[0.5, 0.5, 0.5, 1], font_size="13sp", size_hint_y=None, height="40dp"))
 
         conn.close()
-        self.root.ids.sm.current = 'laporan_bulanan'
 
     def buka_screen_edit(self, item_id):
         self.id_transaksi_sedang_diedit = item_id
@@ -2263,64 +2407,6 @@ class CatatUangApp(App):
             conn.close()
             self.muat_data()
             self.root.ids.sm.current = 'beranda'
-
-    def ekspor_csv(self):
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, tanggal, kategori, nominal, catatan FROM pengeluaran ORDER BY id DESC")
-        data = cursor.fetchall()
-        conn.close()
-
-        if IS_ANDROID:
-            filepath = os.path.join(DOWNLOAD_DIR, "laporan_pengeluaran.csv")
-        else:
-            filepath = "laporan_pengeluaran.csv"
-
-        with open(filepath, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(["ID", "Tanggal", "Kategori", "Nominal", "Catatan"])
-            writer.writerows(data)
-
-        lokasi_pesan = "Folder Download HP" if IS_ANDROID else "Folder Project"
-        popup = Popup(title="Sukses", content=Label(text=f"Data diekspor ke:\n{filepath}\n({lokasi_pesan})"), size_hint=(0.85, 0.35))
-        popup.open()
-
-    def cetak_laporan_teks(self):
-        try:
-            if IS_ANDROID:
-                filepath = os.path.join(DOWNLOAD_DIR, "laporan_keuangan.txt")
-            else:
-                filepath = "laporan_keuangan.txt"
-
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT tanggal, kategori, nominal, catatan FROM pengeluaran ORDER BY tanggal DESC")
-            rows = cursor.fetchall()
-            conn.close()
-
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write("========================================\n")
-                f.write("      LAPORAN KEUANGAN - CATATUANG      \n")
-                f.write(f"      Dicetak: {datetime.now().strftime('%d-%m-%Y %H:%M')}      \n")
-                f.write("========================================\n\n")
-                
-                total_semua = 0
-                for r in rows:
-                    tgl, kat, nom, cat = r
-                    total_semua += nom
-                    cat_str = f" ({cat})" if cat else ""
-                    f.write(f"• [{tgl}] {kat}: Rp {nom:,}".replace(",", ".") + f"{cat_str}\n")
-                
-                f.write("\n----------------------------------------\n")
-                f.write(f"TOTAL KESELURUHAN: Rp {total_semua:,}\n".replace(",", "."))
-                f.write("========================================\n")
-
-            lokasi_pesan = "Folder Download HP" if IS_ANDROID else "Folder Project"
-            popup = Popup(title="Sukses", content=Label(text=f"Laporan teks berhasil dibuat:\n{filepath}\n({lokasi_pesan})"), size_hint=(0.85, 0.35))
-            popup.open()
-        except Exception as e:
-            popup = Popup(title="Gagal", content=Label(text=f"Terjadi kesalahan:\n{str(e)}"), size_hint=(0.8, 0.3))
-            popup.open()
 
     def reset_data(self):
         conn = get_db_connection()
