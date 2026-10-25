@@ -28,6 +28,10 @@ android.permissions = WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
 # (str) Versi aplikasi
 version = 1.0
 
+# --- TAMBAHAN PENTING AGAR TIDAK ERROR ---
+# (bool) Otomatis menyetujui lisensi Android SDK di server GitHub
+android.accept_sdk_license = True
+
 [buildozer]
 
 # (int) Tingkat log/error (2 = debug lengkap untuk melihat proses)
