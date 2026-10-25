@@ -14,7 +14,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 
 # (list) Modul/pustaka Python yang digunakan aplikasi kamu
-requirements = python3,kivy,sqlite3,pyjnius,android
+requirements = python3,kivy,sqlite3
 
 # (str) Orientasi layar (portrait = berdiri / vertikal)
 orientation = portrait
