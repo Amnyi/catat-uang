@@ -43,7 +43,24 @@ jobs:
         pip install Cython==0.29.36 buildozer
 
     - name: Build with Buildozer
-      run: buildozer -v android debug
+      shell: bash
+      run: buildozer -v android debug 2>&1 | tee build.log
+
+    - name: Ringkasan error (hanya jika gagal)
+      if: failure()
+      shell: bash
+      run: |
+        echo "=== Baris error penting ==="
+        grep -n -E "error:|Error:|ERROR|FAILED|Command failed|No module named|not found" build.log | grep -v "warning" | tail -40 || true
+        echo "=== 60 baris sebelum ENVIRONMENT ==="
+        awk '/# ENVIRONMENT:/{exit} {print}' build.log | tail -60 || true
+
+    - name: Upload log build
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: build.log
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
