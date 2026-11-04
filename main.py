@@ -14,32 +14,30 @@ from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, RoundedRectangle, Ellipse, Rectangle, Line
 from kivy.uix.behaviors import ButtonBehavior
-from kivy.uix.image import AsyncImage
 from kivy.uix.scrollview import ScrollView
+from kivy.properties import ListProperty
+from kivy.core.window import Window
+from kivy.utils import platform
+from kivy.metrics import dp
+from kivy.clock import Clock
 
 # Deteksi apakah berjalan di Android atau PC
-try:
-    from jnius import autoclass
-    from android.permissions import request_permissions, Permission
-    request_permissions([Permission.WRITE_EXTERNAL_STORAGE, Permission.READ_EXTERNAL_STORAGE])
-    Environment = autoclass('android.os.Environment')
-    DOWNLOAD_DIR = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getAbsolutePath()
-    IS_ANDROID = True
-except ImportError:
-    IS_ANDROID = False
-    DOWNLOAD_DIR = ""
+IS_ANDROID = (platform == 'android')
+
+# Layar tidak tertutup keyboard saat mengetik
+Window.softinput_mode = 'below_target'
 
 # --------------------------
 # SETUP DATABASE SQLITE
 # --------------------------
-def init_db():
+def get_db_path():
+    # Di Android, simpan di folder privat aplikasi (tidak butuh izin storage)
     if IS_ANDROID:
-        from android.storage import app_storage_path
-        db_path = os.path.join(app_storage_path(), "catatan_keuangan.db")
-    else:
-        db_path = "catatan_keuangan.db"
+        return os.path.join(App.get_running_app().user_data_dir, "catatan_keuangan.db")
+    return "catatan_keuangan.db"
 
-    conn = sqlite3.connect(db_path)
+def init_db():
+    conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS pengeluaran (
@@ -61,32 +59,90 @@ def init_db():
     conn.close()
 
 def get_db_connection():
-    if IS_ANDROID:
-        from android.storage import app_storage_path
-        db_path = os.path.join(app_storage_path(), "catatan_keuangan.db")
-    else:
-        db_path = "catatan_keuangan.db"
-    return sqlite3.connect(db_path)
+    return sqlite3.connect(get_db_path())
 
-ICON_URLS = {
-    'Makanan': 'https://cdn-icons-png.flaticon.com/512/3515/3515156.png',        
-    'Transportasi': 'https://cdn-icons-png.flaticon.com/512/3174/3174834.png',    
-    'Belanja': 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png',         
-    'Kesehatan': 'https://cdn-icons-png.flaticon.com/512/2966/2966327.png',       
-    'Hiburan': 'https://cdn-icons-png.flaticon.com/512/3163/3163478.png',         
-    'Lainnya': 'https://cdn-icons-png.flaticon.com/512/3143/3143498.png'          
-}
-
-def get_icon_kategori(kat):
-    if not kat:
-        return ICON_URLS['Lainnya']
-    kat_clean = kat.strip().capitalize()
-    return ICON_URLS.get(kat_clean, ICON_URLS['Lainnya'])
+def normalisasi_tanggal(teks):
+    """Kembalikan tanggal format YYYY-MM-DD, atau None kalau tidak valid."""
+    try:
+        return datetime.strptime(teks.strip(), "%Y-%m-%d").strftime("%Y-%m-%d")
+    except (ValueError, AttributeError):
+        return None
 
 # --------------------------
 # WIDGET IKON KUSTOM (VEKTOR)
 # --------------------------
-class NavIconBeranda(Widget):
+PINK = [0.96, 0.45, 0.62, 1]
+
+class IconKategoriBulat(Widget):
+    """Ikon kategori digambar lewat kode (tanpa file gambar / internet)."""
+    def __init__(self, kategori="", ukuran=0.55, **kwargs):
+        super().__init__(**kwargs)
+        self.kategori = (kategori or "").strip().capitalize()
+        self.ukuran = ukuran
+        self.bind(pos=self.draw, size=self.draw)
+
+    def draw(self, *args):
+        self.canvas.clear()
+        with self.canvas:
+            cx, cy = self.center_x, self.center_y
+            d = min(self.width, self.height)
+            # Lingkaran latar pink muda (ikut posisi widget)
+            Color(0.99, 0.88, 0.92, 1)
+            Ellipse(pos=(cx - d / 2, cy - d / 2), size=(d, d))
+            Color(*PINK)
+            s = d * self.ukuran / 2.0
+            k = self.kategori
+            w = 1.6
+            if k == 'Makanan':        # sendok garpu sederhana: piring + garis
+                Line(circle=(cx, cy, s * 0.55), width=w)
+                Line(points=[cx - s * 0.9, cy - s * 0.7, cx - s * 0.9, cy + s * 0.7], width=w, cap='round')
+                Line(points=[cx + s * 0.9, cy - s * 0.7, cx + s * 0.9, cy + s * 0.7], width=w, cap='round')
+            elif k == 'Transportasi': # mobil
+                Line(rounded_rectangle=(cx - s * 0.85, cy - s * 0.25, s * 1.7, s * 0.6, 3), width=w)
+                Line(points=[cx - s * 0.5, cy + s * 0.35, cx - s * 0.3, cy + s * 0.75, cx + s * 0.3, cy + s * 0.75, cx + s * 0.5, cy + s * 0.35], width=w, joint='round')
+                Ellipse(pos=(cx - s * 0.6, cy - s * 0.5), size=(s * 0.35, s * 0.35))
+                Ellipse(pos=(cx + s * 0.25, cy - s * 0.5), size=(s * 0.35, s * 0.35))
+            elif k == 'Belanja':      # tas belanja
+                Line(rectangle=(cx - s * 0.7, cy - s * 0.7, s * 1.4, s * 1.1), width=w)
+                Line(points=[cx - s * 0.35, cy + s * 0.4, cx - s * 0.35, cy + s * 0.7, cx + s * 0.35, cy + s * 0.7, cx + s * 0.35, cy + s * 0.4], width=w, joint='round')
+            elif k == 'Kesehatan':    # tanda tambah
+                Line(points=[cx, cy - s * 0.75, cx, cy + s * 0.75], width=w + 0.6, cap='round')
+                Line(points=[cx - s * 0.75, cy, cx + s * 0.75, cy], width=w + 0.6, cap='round')
+            elif k == 'Hiburan':      # bintang sederhana
+                Line(points=[cx, cy + s * 0.85, cx + s * 0.25, cy + s * 0.2, cx + s * 0.9, cy + s * 0.2,
+                             cx + s * 0.38, cy - s * 0.2, cx + s * 0.58, cy - s * 0.85, cx, cy - s * 0.45,
+                             cx - s * 0.58, cy - s * 0.85, cx - s * 0.38, cy - s * 0.2, cx - s * 0.9, cy + s * 0.2,
+                             cx - s * 0.25, cy + s * 0.2], width=w, close=True, joint='round')
+            else:                     # Lainnya: tiga titik
+                for dx in (-0.6, 0, 0.6):
+                    Ellipse(pos=(cx + dx * s - s * 0.15, cy - s * 0.15), size=(s * 0.3, s * 0.3))
+
+class BadgeIcon(Label):
+    """Lingkaran berwarna dengan satu huruf (pengganti emoji)."""
+    warna = ListProperty([0.96, 0.45, 0.62, 1])
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.color = [1, 1, 1, 1]
+        self.bold = True
+        self.bind(pos=self._draw, size=self._draw, warna=self._draw)
+        self._draw()
+
+    def _draw(self, *args):
+        self.canvas.before.clear()
+        with self.canvas.before:
+            Color(*self.warna)
+            d = min(self.width, self.height) * 0.9
+            Ellipse(pos=(self.center_x - d / 2, self.center_y - d / 2), size=(d, d))
+
+class NavIconBase(Widget):
+    """Ikon menu bawah: otomatis digambar ulang saat warna tombol induk berubah."""
+    def on_parent(self, widget, parent):
+        if parent is not None and hasattr(parent, 'color_nav'):
+            parent.bind(color_nav=lambda *a: self.draw())
+            self.draw()
+
+class NavIconBeranda(NavIconBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bind(pos=self.draw, size=self.draw)
@@ -99,7 +155,7 @@ class NavIconBeranda(Widget):
             Line(rectangle=(cx - 8, cy - 9, 16, 11), width=1.6)
             Line(rectangle=(cx - 2.5, cy - 9, 5, 6), width=1.3)
 
-class NavIconRiwayat(Widget):
+class NavIconRiwayat(NavIconBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bind(pos=self.draw, size=self.draw)
@@ -112,7 +168,7 @@ class NavIconRiwayat(Widget):
             Line(points=[cx, cy, cx, cy + 5], width=1.5, cap='round')
             Line(points=[cx, cy, cx + 4, cy], width=1.5, cap='round')
 
-class NavIconGrafik(Widget):
+class NavIconGrafik(NavIconBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bind(pos=self.draw, size=self.draw)
@@ -125,7 +181,7 @@ class NavIconGrafik(Widget):
             Line(points=[cx - 10, cy - 6, cx + 10, cy - 6], width=1.5)
             Line(points=[cx - 7, cy - 2, cx - 1, cy + 4, cx + 3, cy + 1, cx + 8, cy + 9], width=1.8, cap='round', joint='round')
 
-class NavIconAnggaran(Widget):
+class NavIconAnggaran(NavIconBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bind(pos=self.draw, size=self.draw)
@@ -138,7 +194,7 @@ class NavIconAnggaran(Widget):
             Line(points=[cx - 5, cy + 6, cx - 5, cy + 9, cx + 5, cy + 9, cx + 5, cy + 6], width=1.5, cap='round', joint='round')
             Rectangle(pos=(cx - 1.5, cy - 1), size=(3, 3))
 
-class NavIconLainnya(Widget):
+class NavIconLainnya(NavIconBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bind(pos=self.draw, size=self.draw)
@@ -308,14 +364,7 @@ class AnggaranCategoryRow(BoxLayout):
             self.rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[12,])
         self.bind(pos=self._update_rect, size=self._update_rect)
 
-        icon_box = BoxLayout(size_hint=(None, None), size=("36dp", "36dp"), pos_hint={"center_y": 0.5})
-        with icon_box.canvas.before:
-            Color(0.99, 0.88, 0.92, 1)
-            RoundedRectangle(pos=icon_box.pos, size=icon_box.size, radius=[18,])
-        
-        img_url = get_icon_kategori(kategori)
-        img_icon = AsyncImage(source=img_url, size_hint=(0.6, 0.6), pos_hint={"center_x": 0.5, "center_y": 0.5}, color=[0.96, 0.45, 0.62, 1])
-        icon_box.add_widget(img_icon)
+        icon_box = IconKategoriBulat(kategori=kategori, size_hint=(None, None), size=(dp(36), dp(36)), pos_hint={"center_y": 0.5})
         self.add_widget(icon_box)
 
         lbl_kat = Label(text=kategori, color=[0.2, 0.2, 0.2, 1], font_size="13sp", bold=True, halign='left', pos_hint={"center_y": 0.5})
@@ -351,14 +400,7 @@ class ItemCard(ButtonBehavior, BoxLayout):
             self.rect = RoundedRectangle(pos=self.pos, size=self.size, radius=[14,])
         self.bind(pos=self._update_rect, size=self._update_rect)
 
-        icon_box = BoxLayout(size_hint=(None, None), size=("45dp", "45dp"), pos_hint={"center_y": 0.5})
-        with icon_box.canvas.before:
-            Color(0.99, 0.88, 0.92, 1)
-            RoundedRectangle(pos=icon_box.pos, size=icon_box.size, radius=[22.5,])
-        
-        img_url = get_icon_kategori(kategori)
-        img_icon = AsyncImage(source=img_url, size_hint=(0.6, 0.6), pos_hint={"center_x": 0.5, "center_y": 0.5}, color=[0.96, 0.45, 0.62, 1])
-        icon_box.add_widget(img_icon)
+        icon_box = IconKategoriBulat(kategori=kategori, size_hint=(None, None), size=(dp(45), dp(45)), pos_hint={"center_y": 0.5})
         self.add_widget(icon_box)
 
         text_box = BoxLayout(orientation='vertical', spacing="3dp", pos_hint={"center_y": 0.5})
@@ -1548,11 +1590,12 @@ BoxLayout:
                                     pos: self.pos
                                     size: self.size
                                     radius: [14,]
-                            Label:
-                                text: "📊"
+                            BadgeIcon:
+                                text: "L"
                                 size_hint_x: None
-                                width: "26dp"
-                                font_size: "16sp"
+                                width: "30dp"
+                                font_size: "13sp"
+                                warna: [0.96, 0.45, 0.62, 1]
                             Label:
                                 text: "Laporan Keuangan"
                                 color: [0.2, 0.2, 0.2, 1]
@@ -1586,11 +1629,12 @@ BoxLayout:
                                     pos: self.pos
                                     size: self.size
                                     radius: [14,]
-                            Label:
-                                text: "ℹ️"
+                            BadgeIcon:
+                                text: "i"
                                 size_hint_x: None
-                                width: "26dp"
-                                font_size: "16sp"
+                                width: "30dp"
+                                font_size: "13sp"
+                                warna: [0.3, 0.55, 0.95, 1]
                             Label:
                                 text: "Tentang CatatUang App"
                                 color: [0.2, 0.2, 0.2, 1]
@@ -1613,11 +1657,12 @@ BoxLayout:
                                     pos: self.pos
                                     size: self.size
                                     radius: [14,]
-                            Label:
-                                text: "⚠️"
+                            BadgeIcon:
+                                text: "!"
                                 size_hint_x: None
-                                width: "26dp"
-                                font_size: "16sp"
+                                width: "30dp"
+                                font_size: "13sp"
+                                warna: [0.9, 0.3, 0.3, 1]
                             Label:
                                 text: "Reset Semua Data"
                                 color: [0.9, 0.3, 0.3, 1]
@@ -1923,8 +1968,29 @@ class CatatUangApp(App):
         self.pilih_hari = now.strftime("%d")
         self.pilih_bulan_angka = now.strftime("%m")
         self.pilih_tahun = now.strftime("%Y")
-        
+        self.id_transaksi_sedang_diedit = None
+
+        # Tombol Back Android: kembali ke halaman sebelumnya, bukan menutup aplikasi
+        Window.bind(on_keyboard=self.on_tombol_keyboard)
+
         return Builder.load_string(KV)
+
+    def on_tombol_keyboard(self, window, key, *args):
+        if key == 27:  # tombol Back / Esc
+            sm = self.root.ids.sm
+            induk = {
+                'form': 'beranda',
+                'riwayat': 'beranda',
+                'edit_transaksi': 'riwayat',
+                'grafik': 'beranda',
+                'anggaran': 'beranda',
+                'lainnya': 'beranda',
+                'laporan_bulanan': 'lainnya',
+            }
+            if sm.current in induk:
+                sm.current = induk[sm.current]
+                return True
+        return False
 
     def on_start(self):
         self.muat_data()
@@ -2309,10 +2375,17 @@ class CatatUangApp(App):
         if not self.id_transaksi_sedang_diedit:
             return
         
-        tgl = self.root.ids.edit_tanggal.text
+        tgl = normalisasi_tanggal(self.root.ids.edit_tanggal.text)
         kat = self.root.ids.edit_kategori.text
         nom = self.root.ids.edit_nominal.text
         cat = self.root.ids.edit_catatan.text
+
+        if tgl is None:
+            self.tampilkan_pesan("Tanggal tidak valid", "Gunakan format TTTT-BB-HH,\nmisalnya 2026-11-04.")
+            return
+        if not nom or int(nom) <= 0:
+            self.tampilkan_pesan("Nominal kosong", "Isi nominal pengeluaran\nlebih dari 0.")
+            return
 
         if nom:
             conn = get_db_connection()
@@ -2394,11 +2467,32 @@ class CatatUangApp(App):
         self.root.ids.form_nominal.text = ""
         self.root.ids.form_catatan.text = ""
 
+    def tampilkan_pesan(self, judul, isi):
+        content = BoxLayout(orientation='vertical', spacing='12dp', padding='15dp')
+        lbl_judul = Label(text=judul, color=PINK, font_size="16sp", bold=True, size_hint_y=None, height="24dp")
+        lbl_isi = Label(text=isi, color=[0.3, 0.3, 0.3, 1], font_size="13sp", halign='center', valign='middle')
+        lbl_isi.bind(size=lbl_isi.setter('text_size'))
+        btn = Button(text="OK", size_hint_y=None, height="45dp", background_normal='',
+                     background_color=PINK, color=[1, 1, 1, 1], bold=True)
+        content.add_widget(lbl_judul)
+        content.add_widget(lbl_isi)
+        content.add_widget(btn)
+        popup = Popup(title="", separator_height=0, content=content, size_hint=(0.85, 0.35),
+                      background_color=[1, 1, 1, 1])
+        btn.bind(on_release=popup.dismiss)
+        popup.open()
+
     def simpan_transaksi(self):
-        tgl = self.root.ids.form_tanggal.text
+        tgl = normalisasi_tanggal(self.root.ids.form_tanggal.text)
         kat = self.root.ids.form_kategori.text
         nom = self.root.ids.form_nominal.text
         cat = self.root.ids.form_catatan.text
+        if tgl is None:
+            self.tampilkan_pesan("Tanggal tidak valid", "Gunakan format TTTT-BB-HH,\nmisalnya 2026-11-04.")
+            return
+        if not nom or int(nom) <= 0:
+            self.tampilkan_pesan("Nominal kosong", "Isi nominal pengeluaran\nlebih dari 0.")
+            return
         if nom:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -2409,6 +2503,24 @@ class CatatUangApp(App):
             self.root.ids.sm.current = 'beranda'
 
     def reset_data(self):
+        # Minta konfirmasi dulu sebelum menghapus semua data
+        content = BoxLayout(orientation='vertical', spacing='12dp', padding='15dp')
+        content.add_widget(Label(text="Hapus semua data?", color=[0.9, 0.3, 0.3, 1], font_size="16sp", bold=True, size_hint_y=None, height="24dp"))
+        lbl = Label(text="Semua riwayat pengeluaran akan dihapus\ndan tidak bisa dikembalikan.", color=[0.3, 0.3, 0.3, 1], font_size="13sp", halign='center', valign='middle')
+        lbl.bind(size=lbl.setter('text_size'))
+        content.add_widget(lbl)
+        btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height="45dp")
+        btn_batal = Button(text="Batal", background_normal='', background_color=[0.9, 0.9, 0.9, 1], color=[0.3, 0.3, 0.3, 1], bold=True)
+        btn_hapus = Button(text="Hapus", background_normal='', background_color=[0.9, 0.3, 0.3, 1], color=[1, 1, 1, 1], bold=True)
+        btn_box.add_widget(btn_batal)
+        btn_box.add_widget(btn_hapus)
+        content.add_widget(btn_box)
+        popup = Popup(title="", separator_height=0, content=content, size_hint=(0.85, 0.38), background_color=[1, 1, 1, 1])
+        btn_batal.bind(on_release=popup.dismiss)
+        btn_hapus.bind(on_release=lambda *a: (popup.dismiss(), self._reset_data_sekarang()))
+        popup.open()
+
+    def _reset_data_sekarang(self):
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM pengeluaran")
