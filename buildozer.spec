@@ -30,6 +30,10 @@ android.accept_sdk_license = True
 
 android.allow_backup = True
 
+# Kunci versi python-for-android yang stabil (memakai Python 3.11).
+# Tanpa ini, buildozer memakai Python 3.14 dan Kivy 2.3.0 gagal dikompilasi.
+p4a.branch = v2024.01.21
+
 [buildozer]
 
 # 2 = log lengkap untuk melihat proses
